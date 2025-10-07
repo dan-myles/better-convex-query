@@ -1,6 +1,6 @@
 {
   "name": "better-convex-query",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "TanStack Query-inspired React hooks for Convex with enhanced developer experience",
   "type": "module",
   "main": "./dist/index.js",
