@@ -1,5 +1,7 @@
 import { useQueries, useMutation as useConvexMutation } from 'convex/react';
 import type { FunctionReference, FunctionArgs, FunctionReturnType } from 'convex/server';
+import { getFunctionName } from 'convex/server';
+import { convexToJson } from 'convex/values';
 import { useCallback, useMemo, useState } from 'react';
 
 // TanStack Query-style status types
@@ -77,7 +79,7 @@ export function useQuery<TQuery extends FunctionReference<'query'>>(query: TQuer
       return {};
     }
     return { query: { query, args: argsObject } };
-  }, [JSON.stringify(argsObject), query, skip, enabled]);
+  }, [JSON.stringify(convexToJson(argsObject)), getFunctionName(query), skip, enabled]);
   
   const results = useQueries(queries);
   const convexResult = results.query;
