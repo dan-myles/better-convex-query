@@ -16,9 +16,9 @@
     "dist"
   ],
   "scripts": {
-    "build": "bun build src/index.ts --outdir dist --target bun --format esm && bun run build:types",
+    "build": "bun build src/index.ts --outdir dist --target bun --format esm --external react --external convex && bun run build:types",
     "build:types": "tsc --emitDeclarationOnly --outDir dist",
-    "dev": "bun build src/index.ts --outdir dist --target bun --format esm --watch & bun run build:types --watch",
+    "dev": "bun build src/index.ts --outdir dist --target bun --format esm --external react --external convex --watch & bun run build:types --watch",
     "test": "bun test",
     "prepublishOnly": "bun run build"
   },
