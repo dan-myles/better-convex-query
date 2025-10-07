@@ -47,7 +47,7 @@
   "dependencies": {},
   "repository": {
     "type": "git",
-    "url": "https://github.com/dan-myles/better-convex-query.git"
+    "url": "git+https://github.com/dan-myles/better-convex-query.git"
   },
   "bugs": {
     "url": "https://github.com/dan-myles/better-convex-query/issues"
