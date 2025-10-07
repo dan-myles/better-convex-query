@@ -1,6 +1,6 @@
-import { useQuery as useConvexQuery, useMutation as useConvexMutation } from 'convex/react';
+import { useQueries, useMutation as useConvexMutation } from 'convex/react';
 import type { FunctionReference, FunctionArgs, FunctionReturnType } from 'convex/server';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 // TanStack Query-style status types
 export type QueryStatus = 'loading' | 'error' | 'success';
@@ -68,42 +68,56 @@ export function useQuery<TQuery extends FunctionReference<'query'>>(query: TQuer
   
   const { enabled = true } = options ?? {};
 
-  // Use Convex's built-in useQuery - it handles all the complex stuff!
-  const convexResult = useConvexQuery(
-    query,
-    args === 'skip' ? ('skip' as any) : args
-  );
+  // Follow the same pattern as native Convex useQuery
+  const skip = args === 'skip';
+  const argsObject = args === 'skip' ? {} : args;
+  
+  const queries = useMemo(() => {
+    if (skip || !enabled) {
+      return {};
+    }
+    return { query: { query, args: argsObject } };
+  }, [JSON.stringify(argsObject), query, skip, enabled]);
+  
+  const results = useQueries(queries);
+  const convexResult = results.query;
+  
+  // Handle errors like native Convex implementation
+  if (convexResult instanceof Error) {
+    // For now, we'll rethrow like Convex does, but we might want to handle this differently
+    throw convexResult;
+  }
 
   // Track loading states for TanStack-style API
-  const [isLoading, setIsLoading] = useState(enabled && args !== 'skip');
+  const [isLoading, setIsLoading] = useState(enabled && !skip);
   const [hasLoaded, setHasLoaded] = useState(false);
 
   // Reset loading state when enabled/args change
   useEffect(() => {
-    if (enabled && args !== 'skip') {
+    if (enabled && !skip) {
       setIsLoading(true);
     } else {
       setIsLoading(false);
     }
-  }, [enabled, args]);
+  }, [enabled, skip]);
 
   // Update loaded state when we get data
   useEffect(() => {
-    if (convexResult !== undefined && enabled && args !== 'skip') {
+    if (convexResult !== undefined && enabled && !skip) {
       setHasLoaded(true);
       setIsLoading(false);
     }
-  }, [convexResult, enabled, args]);
+  }, [convexResult, enabled, skip]);
 
   // Determine status based on Convex result
   const status: QueryStatus = (() => {
-    if (!enabled || args === 'skip') return 'loading';
+    if (!enabled || skip) return 'loading';
     if (convexResult === undefined) return 'loading';
     return 'success';
   })();
 
   // isFetching = currently loading (including background refetches)
-  const isFetching = enabled && args !== 'skip' && convexResult === undefined;
+  const isFetching = enabled && !skip && convexResult === undefined;
   
   // isPending = loading or error state (no successful data)
   const isPending = status === 'loading';
