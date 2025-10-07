@@ -1,6 +1,6 @@
 import { useQueries, useMutation as useConvexMutation } from 'convex/react';
 import type { FunctionReference, FunctionArgs, FunctionReturnType } from 'convex/server';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 // TanStack Query-style status types
 export type QueryStatus = 'loading' | 'error' | 'success';
@@ -82,68 +82,68 @@ export function useQuery<TQuery extends FunctionReference<'query'>>(query: TQuer
   const results = useQueries(queries);
   const convexResult = results.query;
   
-  // Handle errors like native Convex implementation
-  if (convexResult instanceof Error) {
-    // For now, we'll rethrow like Convex does, but we might want to handle this differently
-    throw convexResult;
-  }
-
-  // Track loading states for TanStack-style API
-  const [isLoading, setIsLoading] = useState(enabled && !skip);
-  const [hasLoaded, setHasLoaded] = useState(false);
-
-  // Reset loading state when enabled/args change
-  useEffect(() => {
-    if (enabled && !skip) {
-      setIsLoading(true);
-    } else {
-      setIsLoading(false);
-    }
-  }, [enabled, skip]);
-
-  // Update loaded state when we get data
-  useEffect(() => {
-    if (convexResult !== undefined && enabled && !skip) {
-      setHasLoaded(true);
-      setIsLoading(false);
-    }
-  }, [convexResult, enabled, skip]);
-
-  // Determine status based on Convex result
-  const status: QueryStatus = (() => {
-    if (!enabled || skip) return 'loading';
-    if (convexResult === undefined) return 'loading';
-    return 'success';
-  })();
-
-  // isFetching = currently loading (including background refetches)
-  const isFetching = enabled && !skip && convexResult === undefined;
-  
-  // isPending = loading or error state (no successful data)
-  const isPending = status === 'loading';
-  
-  // isSuccess = has successful data
-  const isSuccess = status === 'success';
-  
-  // isError = has error (we'll handle this separately)
-  const isError = false; // Convex doesn't return errors this way
-
   // Manual refetch function
   const refetch = useCallback(() => {
     // Convex handles refetching automatically when dependencies change
     // This is mainly for API compatibility with TanStack
     console.warn('refetch() is called - Convex handles refetching automatically through its reactive system');
   }, []);
-
+  
+  // Handle errors like native Convex implementation
+  if (convexResult instanceof Error) {
+    return {
+      data: undefined,
+      error: convexResult,
+      status: 'error',
+      isLoading: false,
+      isFetching: false,
+      isPending: false,
+      isSuccess: false,
+      isError: true,
+      refetch,
+    } as UseQueryResult<FunctionReturnType<TQuery>>;
+  }
+  
+  // If disabled or skipped, return pending state
+  if (!enabled || skip) {
+    return {
+      data: undefined,
+      error: undefined,
+      status: 'loading',
+      isLoading: false,
+      isFetching: false,
+      isPending: true,
+      isSuccess: false,
+      isError: false,
+      refetch,
+    } as UseQueryResult<FunctionReturnType<TQuery>>;
+  }
+  
+  // If data is still loading
+  if (convexResult === undefined) {
+    return {
+      data: undefined,
+      error: undefined,
+      status: 'loading',
+      isLoading: true,
+      isFetching: true,
+      isPending: true,
+      isSuccess: false,
+      isError: false,
+      refetch,
+    } as UseQueryResult<FunctionReturnType<TQuery>>;
+  }
+  
+  // Data loaded successfully
   return {
     data: convexResult,
-    error: undefined, // Convex handles errors differently
-    status,
-    isLoading: isLoading && !hasLoaded, // Only true for initial load
-    isFetching, // True during any load (initial or background)
-    isPending,
-    isSuccess,
-    isError,
+    error: undefined,
+    status: 'success',
+    isLoading: false,
+    isFetching: false,
+    isPending: false,
+    isSuccess: true,
+    isError: false,
     refetch,
   } as UseQueryResult<FunctionReturnType<TQuery>>;
 }
