@@ -43,6 +43,11 @@ export interface UseMutationResult<TData = unknown, TError = Error, TVariables =
   reset: () => void;
 }
 
+type OptionalRestArgsOrSkip<FuncRef extends FunctionReference<any>> = 
+  FuncRef["_args"] extends Record<string, never> 
+    ? [args?: Record<string, never> | "skip", options?: UseQueryOptions] 
+    : [args: FuncRef["_args"] | "skip", options?: UseQueryOptions];
+
 /**
  * TanStack Query-style hook for Convex queries with enhanced status and loading states.
  * Leverages Convex's built-in real-time sync engine - no additional caching needed!
@@ -56,14 +61,11 @@ export interface UseMutationResult<TData = unknown, TError = Error, TVariables =
  * );
  * ```
  */
-export function useQuery<
-  TQuery extends FunctionReference<'query'>,
-  TArgs extends FunctionArgs<TQuery> = FunctionArgs<TQuery>
->(
-  query: TQuery,
-  args: TArgs extends Record<string, never> ? 'skip' | undefined : TArgs,
-  options?: UseQueryOptions
-): UseQueryResult<FunctionReturnType<TQuery>> {
+export function useQuery<TQuery extends FunctionReference<'query'>>(query: TQuery, ...queryArgs: OptionalRestArgsOrSkip<TQuery>): UseQueryResult<FunctionReturnType<TQuery>> {
+  // Extract args and options from the rest parameters
+  const args = queryArgs[0] ?? ({} as FunctionArgs<TQuery>);
+  const options = queryArgs[1];
+  
   const { enabled = true } = options ?? {};
 
   // Use Convex's built-in useQuery - it handles all the complex stuff!
