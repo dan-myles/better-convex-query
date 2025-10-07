@@ -1,0 +1,56 @@
+{
+  "name": "better-convex-query",
+  "version": "0.1.0",
+  "description": "TanStack Query-inspired React hooks for Convex with enhanced developer experience",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "bun build src/index.ts --outdir dist --target bun --format esm && bun run build:types",
+    "build:types": "tsc --emitDeclarationOnly --outDir dist",
+    "dev": "bun build src/index.ts --outdir dist --target bun --format esm --watch & bun run build:types --watch",
+    "test": "bun test",
+    "prepublishOnly": "bun run build"
+  },
+  "keywords": [
+    "convex",
+    "react",
+    "hooks",
+    "query",
+    "mutation",
+    "tanstack",
+    "database",
+    "realtime"
+  ],
+  "author": "Dan Myles",
+  "license": "MIT",
+  "peerDependencies": {
+    "convex": ">=1.0.0",
+    "react": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0",
+    "convex": "^1.0.0",
+    "react": "^18.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dan-myles/better-convex-query.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dan-myles/better-convex-query/issues"
+  },
+  "homepage": "https://github.com/dan-myles/better-convex-query#readme"
+}
