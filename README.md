@@ -8,6 +8,8 @@ Convex already handles all the complex stuff (caching, retry logic, real-time su
 
 - ✅ **Full TanStack Query-style status system** - `status: 'loading' | 'error' | 'success'`
 - ✅ **Enhanced loading states** - `isLoading` vs `isFetching` distinction
+- ✅ **Smooth query transitions** - `keepPreviousData` for flicker-free pagination
+- ✅ **Query caching support** - Optional cache provider for extended subscription lifetimes
 - ✅ **Mutation callbacks** - `onSuccess`, `onError`, `onSettled`
 - ✅ **Advanced TypeScript inference** - Perfect type safety
 - ✅ **Zero additional complexity** - Convex handles the hard stuff!
@@ -37,26 +39,63 @@ function UserProfile({ userId }: { userId: string }) {
     isFetching, 
     isPending, 
     isSuccess, 
-    isError, 
-    refetch 
+    isError
   } = useQuery(
     api.users.getUser,
     { userId },
     { enabled: !!userId }
   );
 
-  // Status-based rendering with TanStack-style API
-  if (isLoading) return <div>🔄 Initial loading...</div>;
-  if (isFetching) return <div>⚡ Fetching data...</div>;
+  if (isLoading) return <div>🔄 Loading...</div>;
   if (isError) return <div>❌ Error: {error?.message}</div>;
-  if (!isSuccess || !data) return <div>❓ No data</div>;
+  if (!data) return null;
 
   return (
     <div>
       <h1>Status: {status}</h1>
       <h2>{data.name}</h2>
       <p>{data.email}</p>
-      <button onClick={refetch}>🔄 Refetch</button>
+    </div>
+  );
+}
+```
+
+### keepPreviousData - Smooth Pagination
+
+```tsx
+import { useQuery } from 'better-convex-query';
+import { api } from '../convex/_generated/api';
+
+function ProjectsList() {
+  const [page, setPage] = useState(0);
+  
+  const { data, isPlaceholderData, isFetching } = useQuery(
+    api.projects.list,
+    { page },
+    { keepPreviousData: true }
+  );
+
+  return (
+    <div>
+      {data?.projects.map(project => (
+        <div key={project.id}>{project.name}</div>
+      ))}
+      
+      <button 
+        onClick={() => setPage(p => p - 1)} 
+        disabled={page === 0}
+      >
+        Previous
+      </button>
+      
+      <button 
+        onClick={() => setPage(p => p + 1)}
+        disabled={isPlaceholderData || !data?.hasMore}
+      >
+        Next
+      </button>
+      
+      {isFetching && <span>Loading...</span>}
     </div>
   );
 }
@@ -74,15 +113,12 @@ function UpdateUserForm({ userId }: { userId: string }) {
     {
       onSuccess: (data, variables) => {
         console.log('✅ User updated!', data);
-        // Show success message, navigate, etc.
       },
       onError: (error, variables) => {
         console.error('❌ Update failed:', error);
-        // Show error message to user
       },
       onSettled: (data, error, variables) => {
         console.log('📝 Update completed');
-        // Cleanup, analytics, etc.
       }
     }
   );
@@ -105,9 +141,36 @@ function UpdateUserForm({ userId }: { userId: string }) {
         {updateUser.isPending ? '💾 Saving...' : '💾 Save'}
       </button>
       {updateUser.error && <span>❌ {updateUser.error.message}</span>}
-      <div>Status: {updateUser.status}</div>
     </form>
   );
+}
+```
+
+### useCacheQuery - Extended Cache Lifetime
+
+```tsx
+import { useCacheQuery, ConvexQueryCacheProvider } from 'better-convex-query';
+import { api } from '../convex/_generated/api';
+
+// Wrap your app
+function App() {
+  return (
+    <ConvexProvider client={convex}>
+      <ConvexQueryCacheProvider expiration={300000}>
+        <YourApp />
+      </ConvexQueryCacheProvider>
+    </ConvexProvider>
+  );
+}
+
+// Use cached queries
+function UserProfile({ userId }: { userId: string }) {
+  const { data } = useCacheQuery(
+    api.users.getUser,
+    { userId }
+  );
+  
+  return <div>{data?.name}</div>;
 }
 ```
 
@@ -125,6 +188,7 @@ function useQuery<TQuery extends FunctionReference<'query'>>(
 
 #### Options
 - `enabled?: boolean` - Whether to fetch data (default: `true`)
+- `keepPreviousData?: boolean` - Show previous data while new query loads (default: `false`)
 
 #### Return
 - `data: TData | undefined` - The query result data
@@ -135,7 +199,7 @@ function useQuery<TQuery extends FunctionReference<'query'>>(
 - `isPending: boolean` - Loading or error state
 - `isSuccess: boolean` - Has successful data
 - `isError: boolean` - Has error
-- `refetch: () => void` - Manual refetch (Convex handles automatic refetching)
+- `isPlaceholderData: boolean` - Whether showing previous data during transition
 
 ### useMutation
 
@@ -172,6 +236,23 @@ const { status, isLoading, isFetching, isSuccess, isError } = useQuery(query, ar
 const { isLoading, isFetching } = useQuery(query, args);
 // isLoading = initial load only
 // isFetching = any load (initial + background refetch)
+```
+
+### ✅ Smooth Query Transitions (keepPreviousData)
+```typescript
+const { data, isPlaceholderData } = useQuery(
+  api.projects.list, 
+  { page }, 
+  { keepPreviousData: true }
+);
+// Shows previous data while new query loads - perfect for pagination!
+```
+
+### ✅ Extended Cache Lifetime (useCacheQuery)
+```typescript
+// Keep query subscriptions alive for 5 minutes after unmount
+const { data } = useCacheQuery(api.users.getUser, { userId });
+// Reduces unnecessary re-fetches when navigating
 ```
 
 ### ✅ Enhanced Mutation Callbacks
