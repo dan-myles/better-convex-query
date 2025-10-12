@@ -10,7 +10,7 @@ import type {
 } from "convex/server";
 import { getFunctionName } from "convex/server";
 import { convexToJson } from "convex/values";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 export { ConvexQueryCacheProvider } from "convex-helpers/react/cache/provider";
 export type { ConvexQueryCacheOptions } from "convex-helpers/react/cache/provider";
 
@@ -41,7 +41,6 @@ export interface UseQueryResult<TData = unknown, TError = Error> {
   isPending: boolean;
   isSuccess: boolean;
   isError: boolean;
-  refetch: () => void;
 }
 
 export interface UseMutationOptions<
@@ -82,7 +81,7 @@ type OptionalRestArgsOrSkip<FuncRef extends FunctionReference<any>> =
  *
  * @example
  * ```tsx
- * const { data, error, status, isLoading, isFetching, refetch } = useQuery(
+ * const { data, error, status, isLoading, isFetching } = useQuery(
  *   api.users.getUser,
  *   { userId: '123' },
  *   { enabled: !!userId }
@@ -118,16 +117,6 @@ export function useQuery<TQuery extends FunctionReference<"query">>(
   const results = useQueries(queries);
   const convexResult = results.query;
 
-  // Manual refetch function
-  const refetch = useCallback(() => {
-    // Convex handles refetching automatically when dependencies change
-    // This is mainly for API compatibility with TanStack
-    console.warn(
-      "refetch() is called - Convex handles refetching automatically through its reactive system",
-    );
-  }, []);
-
-  // Handle errors like native Convex implementation
   if (convexResult instanceof Error) {
     return {
       data: undefined,
@@ -138,11 +127,9 @@ export function useQuery<TQuery extends FunctionReference<"query">>(
       isPending: false,
       isSuccess: false,
       isError: true,
-      refetch,
     } as UseQueryResult<FunctionReturnType<TQuery>>;
   }
 
-  // If disabled or skipped, return pending state
   if (!enabled || skip) {
     return {
       data: undefined,
@@ -153,11 +140,9 @@ export function useQuery<TQuery extends FunctionReference<"query">>(
       isPending: true,
       isSuccess: false,
       isError: false,
-      refetch,
     } as UseQueryResult<FunctionReturnType<TQuery>>;
   }
 
-  // If data is still loading
   if (convexResult === undefined) {
     return {
       data: undefined,
@@ -168,11 +153,9 @@ export function useQuery<TQuery extends FunctionReference<"query">>(
       isPending: true,
       isSuccess: false,
       isError: false,
-      refetch,
     } as UseQueryResult<FunctionReturnType<TQuery>>;
   }
 
-  // Data loaded successfully
   return {
     data: convexResult,
     error: undefined,
@@ -182,7 +165,6 @@ export function useQuery<TQuery extends FunctionReference<"query">>(
     isPending: false,
     isSuccess: true,
     isError: false,
-    refetch,
   } as UseQueryResult<FunctionReturnType<TQuery>>;
 }
 
@@ -302,7 +284,7 @@ export function useMutation<
  *
  * @example
  * ```tsx
- * const { data, error, status, isLoading, isFetching, refetch } = useCacheQuery(
+ * const { data, error, status, isLoading, isFetching } = useCacheQuery(
  *   api.users.getUser,
  *   { userId: '123' },
  *   { enabled: !!userId }
@@ -336,12 +318,6 @@ export function useCacheQuery<TQuery extends FunctionReference<"query">>(
   const results = useCachedQueries(queries);
   const convexResult = results.query;
 
-  const refetch = useCallback(() => {
-    console.warn(
-      "refetch() is called - Convex handles refetching automatically through its reactive system",
-    );
-  }, []);
-
   if (convexResult instanceof Error) {
     return {
       data: undefined,
@@ -352,7 +328,6 @@ export function useCacheQuery<TQuery extends FunctionReference<"query">>(
       isPending: false,
       isSuccess: false,
       isError: true,
-      refetch,
     } as UseQueryResult<FunctionReturnType<TQuery>>;
   }
 
@@ -366,7 +341,6 @@ export function useCacheQuery<TQuery extends FunctionReference<"query">>(
       isPending: true,
       isSuccess: false,
       isError: false,
-      refetch,
     } as UseQueryResult<FunctionReturnType<TQuery>>;
   }
 
@@ -380,7 +354,6 @@ export function useCacheQuery<TQuery extends FunctionReference<"query">>(
       isPending: true,
       isSuccess: false,
       isError: false,
-      refetch,
     } as UseQueryResult<FunctionReturnType<TQuery>>;
   }
 
@@ -393,7 +366,6 @@ export function useCacheQuery<TQuery extends FunctionReference<"query">>(
     isPending: false,
     isSuccess: true,
     isError: false,
-    refetch,
   } as UseQueryResult<FunctionReturnType<TQuery>>;
 }
 
