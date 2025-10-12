@@ -10,7 +10,7 @@ import type {
 } from "convex/server";
 import { getFunctionName } from "convex/server";
 import { convexToJson } from "convex/values";
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 export { ConvexQueryCacheProvider } from "convex-helpers/react/cache/provider";
 export type { ConvexQueryCacheOptions } from "convex-helpers/react/cache/provider";
 
@@ -30,6 +30,7 @@ export type InferMutationData<T> =
 
 export interface UseQueryOptions {
   enabled?: boolean;
+  keepPreviousData?: boolean;
 }
 
 export interface UseQueryResult<TData = unknown, TError = Error> {
@@ -41,6 +42,7 @@ export interface UseQueryResult<TData = unknown, TError = Error> {
   isPending: boolean;
   isSuccess: boolean;
   isError: boolean;
+  isPlaceholderData: boolean;
 }
 
 export interface UseMutationOptions<
@@ -86,21 +88,36 @@ type OptionalRestArgsOrSkip<FuncRef extends FunctionReference<any>> =
  *   { userId: '123' },
  *   { enabled: !!userId }
  * );
+ * 
+ * // With keepPreviousData for smooth pagination
+ * const { data, isPlaceholderData } = useQuery(
+ *   api.projects.list,
+ *   { page },
+ *   { keepPreviousData: true }
+ * );
  * ```
  */
 export function useQuery<TQuery extends FunctionReference<"query">>(
   query: TQuery,
   ...queryArgs: OptionalRestArgsOrSkip<TQuery>
 ): UseQueryResult<FunctionReturnType<TQuery>> {
-  // Extract args and options from the rest parameters
   const args = queryArgs[0] ?? ({} as FunctionArgs<TQuery>);
   const options = queryArgs[1];
 
-  const { enabled = true } = options ?? {};
+  const { enabled = true, keepPreviousData = false } = options ?? {};
 
-  // Follow the same pattern as native Convex useQuery
+  const previousDataRef = useRef<FunctionReturnType<TQuery> | undefined>(undefined);
+  const previousQueryKeyRef = useRef<string>("");
+
   const skip = args === "skip";
   const argsObject = args === "skip" ? {} : args;
+
+  const currentQueryKey = useMemo(() => {
+    return JSON.stringify({
+      fn: getFunctionName(query),
+      args: convexToJson(argsObject),
+    });
+  }, [getFunctionName(query), JSON.stringify(convexToJson(argsObject))]);
 
   const queries = useMemo(() => {
     if (skip || !enabled) {
@@ -117,6 +134,16 @@ export function useQuery<TQuery extends FunctionReference<"query">>(
   const results = useQueries(queries);
   const convexResult = results.query;
 
+  const queryKeyChanged = previousQueryKeyRef.current !== "" && 
+                          previousQueryKeyRef.current !== currentQueryKey;
+
+  useEffect(() => {
+    if (convexResult !== undefined && !(convexResult instanceof Error)) {
+      previousDataRef.current = convexResult;
+      previousQueryKeyRef.current = currentQueryKey;
+    }
+  }, [convexResult, currentQueryKey]);
+
   if (convexResult instanceof Error) {
     return {
       data: undefined,
@@ -127,6 +154,7 @@ export function useQuery<TQuery extends FunctionReference<"query">>(
       isPending: false,
       isSuccess: false,
       isError: true,
+      isPlaceholderData: false,
     } as UseQueryResult<FunctionReturnType<TQuery>>;
   }
 
@@ -140,10 +168,25 @@ export function useQuery<TQuery extends FunctionReference<"query">>(
       isPending: true,
       isSuccess: false,
       isError: false,
+      isPlaceholderData: false,
     } as UseQueryResult<FunctionReturnType<TQuery>>;
   }
 
   if (convexResult === undefined) {
+    if (keepPreviousData && queryKeyChanged && previousDataRef.current !== undefined) {
+      return {
+        data: previousDataRef.current,
+        error: undefined,
+        status: "success",
+        isLoading: false,
+        isFetching: true,
+        isPending: false,
+        isSuccess: true,
+        isError: false,
+        isPlaceholderData: true,
+      } as UseQueryResult<FunctionReturnType<TQuery>>;
+    }
+
     return {
       data: undefined,
       error: undefined,
@@ -153,6 +196,7 @@ export function useQuery<TQuery extends FunctionReference<"query">>(
       isPending: true,
       isSuccess: false,
       isError: false,
+      isPlaceholderData: false,
     } as UseQueryResult<FunctionReturnType<TQuery>>;
   }
 
@@ -165,6 +209,7 @@ export function useQuery<TQuery extends FunctionReference<"query">>(
     isPending: false,
     isSuccess: true,
     isError: false,
+    isPlaceholderData: false,
   } as UseQueryResult<FunctionReturnType<TQuery>>;
 }
 
@@ -289,6 +334,13 @@ export function useMutation<
  *   { userId: '123' },
  *   { enabled: !!userId }
  * );
+ * 
+ * // With keepPreviousData for smooth pagination
+ * const { data, isPlaceholderData } = useCacheQuery(
+ *   api.projects.list,
+ *   { page },
+ *   { keepPreviousData: true }
+ * );
  * ```
  */
 export function useCacheQuery<TQuery extends FunctionReference<"query">>(
@@ -298,10 +350,20 @@ export function useCacheQuery<TQuery extends FunctionReference<"query">>(
   const args = queryArgs[0] ?? ({} as FunctionArgs<TQuery>);
   const options = queryArgs[1];
 
-  const { enabled = true } = options ?? {};
+  const { enabled = true, keepPreviousData = false } = options ?? {};
+
+  const previousDataRef = useRef<FunctionReturnType<TQuery> | undefined>(undefined);
+  const previousQueryKeyRef = useRef<string>("");
 
   const skip = args === "skip";
   const argsObject = args === "skip" ? {} : args;
+
+  const currentQueryKey = useMemo(() => {
+    return JSON.stringify({
+      fn: getFunctionName(query),
+      args: convexToJson(argsObject),
+    });
+  }, [getFunctionName(query), JSON.stringify(convexToJson(argsObject))]);
 
   const queries = useMemo(() => {
     if (skip || !enabled) {
@@ -318,6 +380,16 @@ export function useCacheQuery<TQuery extends FunctionReference<"query">>(
   const results = useCachedQueries(queries);
   const convexResult = results.query;
 
+  const queryKeyChanged = previousQueryKeyRef.current !== "" && 
+                          previousQueryKeyRef.current !== currentQueryKey;
+
+  useEffect(() => {
+    if (convexResult !== undefined && !(convexResult instanceof Error)) {
+      previousDataRef.current = convexResult;
+      previousQueryKeyRef.current = currentQueryKey;
+    }
+  }, [convexResult, currentQueryKey]);
+
   if (convexResult instanceof Error) {
     return {
       data: undefined,
@@ -328,6 +400,7 @@ export function useCacheQuery<TQuery extends FunctionReference<"query">>(
       isPending: false,
       isSuccess: false,
       isError: true,
+      isPlaceholderData: false,
     } as UseQueryResult<FunctionReturnType<TQuery>>;
   }
 
@@ -341,10 +414,25 @@ export function useCacheQuery<TQuery extends FunctionReference<"query">>(
       isPending: true,
       isSuccess: false,
       isError: false,
+      isPlaceholderData: false,
     } as UseQueryResult<FunctionReturnType<TQuery>>;
   }
 
   if (convexResult === undefined) {
+    if (keepPreviousData && queryKeyChanged && previousDataRef.current !== undefined) {
+      return {
+        data: previousDataRef.current,
+        error: undefined,
+        status: "success",
+        isLoading: false,
+        isFetching: true,
+        isPending: false,
+        isSuccess: true,
+        isError: false,
+        isPlaceholderData: true,
+      } as UseQueryResult<FunctionReturnType<TQuery>>;
+    }
+
     return {
       data: undefined,
       error: undefined,
@@ -354,6 +442,7 @@ export function useCacheQuery<TQuery extends FunctionReference<"query">>(
       isPending: true,
       isSuccess: false,
       isError: false,
+      isPlaceholderData: false,
     } as UseQueryResult<FunctionReturnType<TQuery>>;
   }
 
@@ -366,6 +455,7 @@ export function useCacheQuery<TQuery extends FunctionReference<"query">>(
     isPending: false,
     isSuccess: true,
     isError: false,
+    isPlaceholderData: false,
   } as UseQueryResult<FunctionReturnType<TQuery>>;
 }
 
