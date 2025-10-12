@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation } from '../dist/index';
 import type { FunctionReference } from '../dist/index';
 
@@ -21,7 +21,6 @@ interface UpdateUserMutation extends FunctionReference<'mutation'> {
 
 // Example React component using the new TanStack-style API
 function UserProfile({ userId }: { userId: string }) {
-  // useQuery with full TanStack-style status and loading states
   const { 
     data, 
     error, 
@@ -30,10 +29,9 @@ function UserProfile({ userId }: { userId: string }) {
     isFetching, 
     isPending, 
     isSuccess, 
-    isError, 
-    refetch 
+    isError
   } = useQuery(
-    {} as GetUserQuery, // This would be your actual Convex query function
+    {} as GetUserQuery,
     { userId },
     { enabled: !!userId }
   );
@@ -106,10 +104,6 @@ function UserProfile({ userId }: { userId: string }) {
           {updateUser.isPending && <span>💾 Saving...</span>}
           {updateUser.status === 'error' && <span>❌ Error: {updateUser.error?.message}</span>}
           {updateUser.status === 'success' && <span>✅ Saved!</span>}
-          
-          <button onClick={() => refetch()}>
-            🔄 Manual Refetch
-          </button>
         </>
       )}
     </div>
@@ -193,4 +187,52 @@ function UpdateUserForm({ userId }: { userId: string }) {
   );
 }
 
-export { UserProfile, ConditionalUser, UpdateUserForm };
+// Example with keepPreviousData for pagination
+interface ListProjectsQuery extends FunctionReference<'query'> {
+  _args: { page: number };
+  _returnType: {
+    projects: Array<{ id: string; name: string }>;
+    hasMore: boolean;
+  };
+}
+
+function ProjectsList() {
+  const [page, setPage] = useState(0);
+  
+  const { data, isPlaceholderData, isFetching } = useQuery(
+    {} as ListProjectsQuery,
+    { page },
+    { keepPreviousData: true }
+  );
+
+  return (
+    <div>
+      <h1>Projects (Page {page + 1})</h1>
+      
+      {data?.projects.map(project => (
+        <div key={project.id}>{project.name}</div>
+      ))}
+      
+      <div style={{ marginTop: '20px' }}>
+        <button 
+          onClick={() => setPage(p => Math.max(p - 1, 0))} 
+          disabled={page === 0}
+        >
+          Previous Page
+        </button>
+        
+        <button 
+          onClick={() => setPage(p => p + 1)}
+          disabled={isPlaceholderData || !data?.hasMore}
+        >
+          Next Page
+        </button>
+        
+        {isFetching && <span style={{ marginLeft: '10px' }}>Loading...</span>}
+        {isPlaceholderData && <span style={{ marginLeft: '10px' }}>(Showing previous page)</span>}
+      </div>
+    </div>
+  );
+}
+
+export { UserProfile, ConditionalUser, UpdateUserForm, ProjectsList };
