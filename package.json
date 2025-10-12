@@ -16,9 +16,9 @@
     "dist"
   ],
   "scripts": {
-    "build": "bun build src/index.ts --outdir dist --target bun --format esm --external react --external convex && bun run build:types",
+    "build": "bun build src/index.ts --outdir dist --target bun --format esm --external react --external convex --external convex-helpers && bun run build:types",
     "build:types": "tsc --emitDeclarationOnly --outDir dist",
-    "dev": "bun build src/index.ts --outdir dist --target bun --format esm --external react --external convex --watch & bun run build:types --watch",
+    "dev": "bun build src/index.ts --outdir dist --target bun --format esm --external react --external convex --external convex-helpers --watch & bun run build:types --watch",
     "test": "bun test",
     "prepublishOnly": "bun run build"
   },
@@ -36,6 +36,7 @@
   "license": "MIT",
   "peerDependencies": {
     "convex": ">=1.0.0",
+    "convex-helpers": ">=0.1.0",
     "react": ">=18.0.0"
   },
   "devDependencies": {
@@ -44,7 +45,9 @@
     "react": "^18.0.0",
     "typescript": "^5.0.0"
   },
-  "dependencies": {},
+  "dependencies": {
+    "convex-helpers": "^0.1.104"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/dan-myles/better-convex-query.git"
